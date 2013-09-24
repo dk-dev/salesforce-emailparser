@@ -1,0 +1,158 @@
+global class CreateLeadFromEmail implements Messaging.InboundEmailHandler {
+ global Messaging.InboundEmailResult handleInboundEmail(
+   Messaging.InboundEmail email,
+   Messaging.InboundEnvelope envelope) {
+    Messaging.InboundEmailResult result = new Messaging.InboundEmailresult();
+    String EmailPlainText= '';
+    string EmailFirstName;
+    string EmailLastName;
+    string EmailTitle;
+    string EmailCompany;
+    string EmailStreet;
+    string EmailCity;
+    string EmailState;
+    string EmailZip;
+    string EmailPhone;
+    string EmailFax;
+    string EmailEmail;
+    string EmailAppt;
+    string EmailComments;
+    string EmailSource;
+    string EmailCampaign;
+    string EmailRecordType;
+    string ContactLine;
+    string Comments2;
+    string Comments3;
+    string EmailContacted;
+    Lead insertedLead;
+
+    try {
+        EmailPlainText = email.plainTextBody;
+        String[] emailbody=email.plainTextBody.split('\n',0);
+        
+        System.debug(emailbody);
+        // This is a terrible way to parse email, but it works...
+        // If the email format changes, by even ONE character, this will fail.
+        ContactLine =             emailbody[12].substring(10);
+        EmailFirstName =          ContactLine.substring(0,ContactLine.indexOf(' ')); //Contact
+        EmailLastName =           ContactLine.substring(ContactLine.indexOf(' ')); //Contact
+        EmailTitle =              emailbody[13].substring(6); //Title
+
+        EmailCompany =            emailbody[15].substring(8); //Company
+        EmailStreet =             emailbody[16].substring(8); //Address 1st line
+        EmailCity =               emailbody[17].substring(0,emailbody[17].indexOf(',')); //City on 2nd line until comma
+        EmailState =              emailbody[17].substring(emailbody[17].indexOf(',')+3, emailbody[17].indexOf(',')+5); //State on 2nd line after comma
+        EmailZip =                emailbody[17].substring(emailbody[17].indexOf(',')+5); //Zip on 2nd line after comma
+
+        EmailPhone =              emailbody[19].substring(6); //Phone
+        EmailFax =                emailbody[20].substring(4); //Fax
+        
+        EmailContacted =          emailbody[34].substring(9); //Contacted
+                                  
+       if(emailbody[21].contains('@')) //Email, logic in place if email address is REFUSED
+            EmailEmail = emailbody[21].substring(8);       
+       else 
+ 
+          EmailEmail = '';
+        EmailAppt =               emailbody[23].substring(12); //Appointment
+
+      
+       if(String.isNotEmpty(emailbody[39]))
+            Comments2 = emailbody[39];
+       else 
+          Comments2 = 'Blank';
+      
+       if(String.isNotEmpty(emailbody[40]))
+            Comments3 = emailbody[40];         
+       else 
+          Comments3 = 'Blank';
+
+        EmailComments =   emailbody[25] + '\n' + emailbody[26] + '\n' + emailbody[27] + '\n' + emailbody[28] + '\n' + emailbody[29] + '\n' + emailbody[30] + '\n' + emailbody[31] + '\n' + emailbody[32] + '\n' + emailbody[33] + '\n' + 'Comments: ' + '\n' + Comments2 + '\n' + Comments3;
+                    
+        System.debug(EmailLastName);
+    }
+    catch( exception e4 ) {
+        System.Debug('Failure: Could Not parse email');
+        return result;
+    }
+if(!(EmailContacted.contains('no')||EmailContacted.contains('No')||EmailContacted.contains('NO')))
+{
+    try {
+
+                Lead leadToInsert = new lead(
+                    FirstName=EmailFirstName,
+                    LastName=EmailLastName,
+                    Title=EmailTitle,
+                    Company=EmailCompany,
+                    Street=EmailStreet,
+                    City=EmailCity,
+                    State=EmailState,
+                    PostalCode=EmailZip,
+                    Phone=EmailPhone,
+                    Fax=EmailFax,
+                    Email=EmailEmail,
+                    //Appointment__c=EmailAppt,
+                    Description_Public__c=EmailComments,
+                    LeadSource='YOUR_LEAD_SOURCE',
+                    //CampaignMember.CampaignId='YOUR_CAMPAIGN_ID',
+                    RecordTypeId='YOUR_RECORD_TYPE_ID',
+                    Status='New',
+                    Country='USA'
+                    );
+                    
+                insert(leadToInsert);
+        
+            }
+    catch (exception e2) {
+        System.Debug('Failure: Could Not Create Lead:' +  EmailLastName + ' ' + e2);
+    }
+    
+
+    result.success = true;
+    return result;
+ }
+else
+    result.success = true;
+    return result;
+}
+
+public static testMethod void CreateLeadFromEmail() {
+    string EmailFirstName;
+    string EmailLastName;
+    string EmailTitle;
+    string EmailCompany;
+    string EmailStreet;
+    string EmailCity;
+    string EmailState;
+    string EmailZip;
+    string EmailPhone;
+    string EmailFax;
+
+
+        Messaging.InboundEmail email = new Messaging.InboundEmail();
+        Messaging.InboundEnvelope env = new Messaging.InboundEnvelope();
+        
+        email.subject = 'test';
+        email.fromAddress = 'some@emailaddress.com';
+        String body = 'First Name : Dave ' + '\n' + 'Last name : Thomas' + '\n' + 
+                            'E-mail Address : dthomas@test.com';
+        email.plainTextBody =  body;
+        
+        EmailFirstName =          'FirstName';
+        EmailLastName =           'LastName';
+        EmailTitle =              'Mr.';
+
+        EmailCompany =            'Some Co';
+        EmailStreet =             '123 A St';
+        EmailCity =               'Sacramento';
+        EmailState =              'CA';
+        EmailZip =                '00000';
+
+        EmailPhone =              '5555555555';
+        EmailFax =                '5555555555';
+        
+        
+        CreateLeadFromEmail emailServiceObj = new CreateLeadFromEmail();
+        emailServiceObj.handleInboundEmail(email, env ); 
+    }
+ }
